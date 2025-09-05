@@ -1,0 +1,11 @@
+{
+  "domain": "charging_control",
+  "name": "Charging Control",
+  "codeowners": ["@mikrohard"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/mikrohard/homeassistant-charging-control",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "1.0.0"
+}

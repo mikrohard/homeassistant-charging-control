@@ -1,0 +1,68 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Charging Control",
+        "description": "Set up the Charging Control integration by selecting the entities to monitor.",
+        "data": {
+          "max_import_power_entity": "Maximum Import Power Entity",
+          "avg_import_power_15min_entity": "15-min Average Import Power Entity",
+          "current_l1_entity": "Phase L1 Current Entity",
+          "current_l2_entity": "Phase L2 Current Entity (Optional)",
+          "current_l3_entity": "Phase L3 Current Entity (Optional)",
+          "voltage_l1_entity": "Phase L1 Voltage Entity",
+          "voltage_l2_entity": "Phase L2 Voltage Entity (Optional)",
+          "voltage_l3_entity": "Phase L3 Voltage Entity (Optional)",
+          "charger_current_l1_entity": "Charger L1 Current Entity (Optional)",
+          "charger_current_l2_entity": "Charger L2 Current Entity (Optional)",
+          "charger_current_l3_entity": "Charger L3 Current Entity (Optional)",
+          "update_interval": "Update Interval (seconds)",
+          "charger_switch_entity": "Charger Switch Entity (Optional)",
+          "charger_current_select_entity": "Charger Current Select Entity (Optional)"
+        }
+      }
+    },
+    "error": {
+      "missing_entities": "Please provide at least the required entities (max import power, 15-min average, L1 current and voltage)."
+    },
+    "abort": {
+      "already_configured": "Charging Control is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Charging Control Options",
+        "description": "Update the entities used by Charging Control.",
+        "data": {
+          "max_import_power_entity": "Maximum Import Power Entity",
+          "avg_import_power_15min_entity": "15-min Average Import Power Entity",
+          "current_l1_entity": "Phase L1 Current Entity",
+          "current_l2_entity": "Phase L2 Current Entity (Optional)",
+          "current_l3_entity": "Phase L3 Current Entity (Optional)",
+          "voltage_l1_entity": "Phase L1 Voltage Entity",
+          "voltage_l2_entity": "Phase L2 Voltage Entity (Optional)",
+          "voltage_l3_entity": "Phase L3 Voltage Entity (Optional)",
+          "charger_current_l1_entity": "Charger L1 Current Entity (Optional)",
+          "charger_current_l2_entity": "Charger L2 Current Entity (Optional)",
+          "charger_current_l3_entity": "Charger L3 Current Entity (Optional)",
+          "update_interval": "Update Interval (seconds)",
+          "charger_switch_entity": "Charger Switch Entity (Optional)",
+          "charger_current_select_entity": "Charger Current Select Entity (Optional)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "charging_control_enabled": {
+        "name": "Charging Control Enabled"
+      }
+    },
+    "select": {
+      "max_charging_current_cap": {
+        "name": "Max Charging Current"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Services for Charging Control integration
+
+reset_power_history:
+  name: Reset Power History
+  description: Reset the power measurement history for both 30-second and 15-minute windows
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The sensor entity to reset (charging_control.max_charging_current)
+      required: false
+      selector:
+        entity:
+          integration: charging_control
+
+update_charger:
+  name: Update Charger
+  description: Manually update the charger control entities based on current power calculations
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional - will use first entry if not specified)
+      required: false
+      selector:
+        text:
