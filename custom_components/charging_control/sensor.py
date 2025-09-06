@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,29 +108,39 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
     
     def _is_charging_enabled(self) -> bool:
         """Check if charging control is enabled via the switch."""
-        switch_entity_id = f"switch.{DOMAIN}_allow_charging"
-        switch_state = self.hass.states.get(switch_entity_id)
+        # Try to find switch entity using entity registry
+        entity_registry = er.async_get(self.hass)
+        if entity_registry:
+            expected_unique_id = f"{DOMAIN}_allow_charging_{self._entry_id}"
+            for entity in entity_registry.entities.values():
+                if entity.unique_id == expected_unique_id and entity.domain == "switch":
+                    switch_state = self.hass.states.get(entity.entity_id)
+                    if switch_state:
+                        return switch_state.state == "on"
         
-        if switch_state is None:
-            # Switch not found, default to enabled
-            return True
-        
-        return switch_state.state == "on"
+        # Switch not found, default to enabled
+        _LOGGER.warning(f"Allow charging switch not found, defaulting to allow.")
+        return True
     
     def _get_max_current_cap(self) -> int:
         """Get the user-selected maximum current cap."""
-        select_entity_id = f"select.{DOMAIN}_max_charging_current"
-        select_state = self.hass.states.get(select_entity_id)
+        # Try to find select entity using entity registry
+        entity_registry = er.async_get(self.hass)
+        if entity_registry:
+            expected_unique_id = f"{DOMAIN}_max_charging_current_cap_{self._entry_id}"
+            for entity in entity_registry.entities.values():
+                if entity.unique_id == expected_unique_id and entity.domain in ("select", "input_select"):
+                    select_state = self.hass.states.get(entity.entity_id)
+                    if select_state and select_state.state != "unavailable":
+                        try:
+                            return int(select_state.state)
+                        except (ValueError, TypeError):
+                            _LOGGER.warning(f"Invalid max current cap value: {select_state.state}, using default 16A")
+                            return 16
         
-        if select_state is None or select_state.state == "unavailable":
-            # Select not found, default to 16A
-            return 16
-        
-        try:
-            return int(select_state.state)
-        except (ValueError, TypeError):
-            _LOGGER.warning(f"Invalid max current cap value: {select_state.state}, using default 16A")
-            return 16
+        # Select not found, default to 16A
+        _LOGGER.warning(f"Charging current select not found, using default 16A")
+        return 16
     
     async def _update_charger_control(self) -> None:
         """Update charger control entities based on calculations."""
