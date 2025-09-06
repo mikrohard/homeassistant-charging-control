@@ -247,7 +247,29 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
             return False
         
         # Charging is allowed if 15-min average is below the maximum
-        return avg_import_15min < max_import
+        if avg_import_15min >= max_import:
+            return False
+            
+        # Check if there's enough available power for minimum charging (6A)
+        # Get 30-second average power for current usage
+        base_power = self._get_state_value(self.avg_30s_entity)
+        available_power = max_import - base_power
+        
+        # If available power is too low, don't allow charging
+        if available_power <= 0:
+            return False
+            
+        # Get average voltage to calculate minimum power needed
+        voltage_l1 = self._get_state_value(self.voltage_l1_entity, 230.0)
+        voltage_l2 = self._get_state_value(self.voltage_l2_entity, 230.0)
+        voltage_l3 = self._get_state_value(self.voltage_l3_entity, 230.0)
+        avg_voltage = (voltage_l1 + voltage_l2 + voltage_l3) / 3
+        
+        # Minimum power needed for 6A charging (3-phase)
+        min_power_needed = 6 * 3 * avg_voltage  # 6A * 3 phases * voltage
+        
+        # Only allow charging if we have enough power for at least 6A
+        return available_power >= min_power_needed
     
     def _calculate_max_current(self) -> int:
         """Calculate maximum allowed charging current (without checking the switch)."""
@@ -271,7 +293,8 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
             available_power = max_import_power - base_power
             
             if available_power <= 0:
-                return 0
+                # Return minimum current instead of 0 (charging_allowed will handle stopping)
+                return 6
             
             # Get average voltage (use average of three phases)
             voltage_l1 = self._get_state_value(self.voltage_l1_entity, 230.0)
@@ -293,7 +316,8 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
             
             # Clamp to valid charging current range (6A to user-selected max)
             if max_current_int < 6:
-                return 6 if available_power > 0 else 0
+                # Always return at least 6A (charging_allowed will handle stopping)
+                return 6
             elif max_current_int > max_current_cap:
                 return max_current_cap
             else:
@@ -527,7 +551,8 @@ class MaxChargingCurrentSensor(ChargingControlSensorBase):
             available_power = max_import_power - base_power
             
             if available_power <= 0:
-                return 0.0
+                # Return minimum current instead of 0 (charging_allowed will handle stopping)
+                return 6.0
             
             # Get average voltage (use average of three phases)
             voltage_l1 = self._get_state_value(self.voltage_l1_entity, 230.0)
@@ -549,7 +574,8 @@ class MaxChargingCurrentSensor(ChargingControlSensorBase):
             
             # Clamp to valid charging current range (6A to user-selected max)
             if max_current_int < 6:
-                return 6 if available_power > 0 else 0
+                # Always return at least 6A (charging_allowed will handle stopping)
+                return 6
             elif max_current_int > max_current_cap:
                 return max_current_cap
             else:
