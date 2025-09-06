@@ -42,16 +42,12 @@ class ChargingEnabledSwitch(SwitchEntity, RestoreEntity):
         self.config = config
         self._entry_id = entry_id
         self._attr_is_on = True  # Default to enabled
+        self._attr_unique_id = f"{DOMAIN}_allow_charging_{self._entry_id}"
     
     @property
     def name(self) -> str:
         """Return the name of the switch."""
-        return "Charging Control Enabled"
-    
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{DOMAIN}_charging_enabled_{self._entry_id}"
+        return "Allow charging"
     
     @property
     def device_info(self) -> dict[str, Any]:

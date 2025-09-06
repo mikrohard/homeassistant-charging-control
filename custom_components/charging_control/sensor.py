@@ -107,7 +107,7 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
     
     def _is_charging_enabled(self) -> bool:
         """Check if charging control is enabled via the switch."""
-        switch_entity_id = f"switch.{DOMAIN}_charging_enabled_{self._entry_id}"
+        switch_entity_id = f"switch.{DOMAIN}_allow_charging"
         switch_state = self.hass.states.get(switch_entity_id)
         
         if switch_state is None:
@@ -118,7 +118,7 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
     
     def _get_max_current_cap(self) -> int:
         """Get the user-selected maximum current cap."""
-        select_entity_id = f"select.{DOMAIN}_max_charging_current_cap_{self._entry_id}"
+        select_entity_id = f"select.{DOMAIN}_max_charging_current"
         select_state = self.hass.states.get(select_entity_id)
         
         if select_state is None or select_state.state == "unavailable":

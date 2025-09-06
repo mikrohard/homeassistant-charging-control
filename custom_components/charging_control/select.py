@@ -41,6 +41,7 @@ class MaxChargingCurrentSelect(SelectEntity, RestoreEntity):
         self.hass = hass
         self.config = config
         self._entry_id = entry_id
+        self._attr_unique_id = f"{DOMAIN}_max_charging_current_cap_{self._entry_id}"
         
         # Generate options from 6A to 32A
         self._attr_options = [str(i) for i in range(6, 33)]
@@ -50,11 +51,6 @@ class MaxChargingCurrentSelect(SelectEntity, RestoreEntity):
     def name(self) -> str:
         """Return the name of the select entity."""
         return "Max Charging Current"
-    
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID."""
-        return f"{DOMAIN}_max_charging_current_cap_{self._entry_id}"
     
     @property
     def device_info(self) -> dict[str, Any]:
