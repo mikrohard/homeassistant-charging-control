@@ -101,7 +101,10 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
         # Power tracking
         self.power_window_30s = PowerWindow(30)
         self.power_window_15min = PowerWindow(15 * 60)
-        
+
+        # State tracking for hysteresis
+        self._charging_stopped_due_to_power_limit = False
+
         self._unsub_state_change = None
         self._unsub_interval = None
         self._last_update = None
@@ -239,37 +242,31 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
         """Calculate if charging should be allowed (without checking the switch)."""
         # Get the 15-minute average import power from entity
         avg_import_15min = self._get_state_value(self.avg_import_entity)
-        
+
         # Get maximum allowed import power
         max_import = self._get_state_value(self.max_import_entity)
-        
+
         if max_import <= 0:
             return False
-        
-        # Charging is allowed if 15-min average is below the maximum
+
+        # Check if we should stop charging due to power limit
         if avg_import_15min >= max_import:
+            self._charging_stopped_due_to_power_limit = True
             return False
+
+        # If charging was previously stopped due to power limit,
+        # only allow restart when average drops below 90% of max
+        if self._charging_stopped_due_to_power_limit:
+            threshold = max_import * 0.9
+            if avg_import_15min < threshold:
+                # Clear the flag, we're below the restart threshold
+                self._charging_stopped_due_to_power_limit = False
+            else:
+                # Still above restart threshold, keep charging disabled
+                return False
             
-        # Check if there's enough available power for minimum charging (6A)
-        # Get 30-second average power for current usage
-        base_power = self._get_state_value(self.avg_30s_entity)
-        available_power = max_import - base_power
-        
-        # If available power is too low, don't allow charging
-        if available_power <= 0:
-            return False
-            
-        # Get average voltage to calculate minimum power needed
-        voltage_l1 = self._get_state_value(self.voltage_l1_entity, 230.0)
-        voltage_l2 = self._get_state_value(self.voltage_l2_entity, 230.0)
-        voltage_l3 = self._get_state_value(self.voltage_l3_entity, 230.0)
-        avg_voltage = (voltage_l1 + voltage_l2 + voltage_l3) / 3
-        
-        # Minimum power needed for 6A charging (3-phase)
-        min_power_needed = 6 * 3 * avg_voltage  # 6A * 3 phases * voltage
-        
-        # Only allow charging if we have enough power for at least 6A
-        return available_power >= min_power_needed
+        # Charging is allowed if 15-min average is below the maximum
+        return True
     
     def _calculate_max_current(self) -> int:
         """Calculate maximum allowed charging current (without checking the switch)."""
@@ -362,6 +359,9 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
         if last_state := await self.async_get_last_state():
             if last_state.state not in ("unknown", "unavailable"):
                 self._attr_native_value = last_state.state
+            # Restore hysteresis state from attributes
+            attrs = last_state.attributes or {}
+            self._charging_stopped_due_to_power_limit = attrs.get('charging_stopped_due_to_power_limit', False)
     
     async def async_will_remove_from_hass(self) -> None:
         """Handle entity being removed from hass."""
@@ -483,27 +483,21 @@ class ChargingAllowedSensor(ChargingControlSensorBase):
         # First check if charging control is enabled
         if not self._is_charging_enabled():
             return False
-        
-        # Get the 15-minute average import power from entity
-        avg_import_15min = self._get_state_value(self.avg_import_entity)
-        
-        # Get maximum allowed import power
-        max_import = self._get_state_value(self.max_import_entity)
-        
-        if max_import <= 0:
-            return False
-        
-        # Charging is allowed if 15-min average is below the maximum
-        return avg_import_15min < max_import
+
+        # Use the base class method which includes hysteresis logic
+        return self._calculate_charging_allowed()
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
+        max_import = self._get_state_value(self.max_import_entity)
         return {
             "charging_control_enabled": self._is_charging_enabled(),
             "avg_import_power_15min": self._get_state_value(self.avg_import_entity),
-            "max_import_power": self._get_state_value(self.max_import_entity),
+            "max_import_power": max_import,
+            "restart_threshold": max_import * 0.9 if max_import > 0 else 0,
             "current_power": self._calculate_current_power(),
+            "charging_stopped_due_to_power_limit": self._charging_stopped_due_to_power_limit,
         }
 
 
@@ -590,16 +584,19 @@ class MaxChargingCurrentSensor(ChargingControlSensorBase):
         """Return extra state attributes."""
         avg_power_30s = self.power_window_30s.get_average(dt_util.now())
         charger_power = self._calculate_charger_power()
-        
+        max_import = self._get_state_value(self.max_import_entity)
+
         return {
             "charging_control_enabled": self._is_charging_enabled(),
             "max_current_cap": self._get_max_current_cap(),
             "avg_power_30s": avg_power_30s,
             "current_charger_power": charger_power,
-            "max_import_power": self._get_state_value(self.max_import_entity),
+            "max_import_power": max_import,
+            "restart_threshold": max_import * 0.9 if max_import > 0 else 0,
             "base_power_without_charging": (avg_power_30s - charger_power) if avg_power_30s else None,
             "charger_switch_configured": bool(self.charger_switch_entity),
             "charger_current_select_configured": bool(self.charger_current_select_entity),
+            "charging_stopped_due_to_power_limit": self._charging_stopped_due_to_power_limit,
         }
 
 
