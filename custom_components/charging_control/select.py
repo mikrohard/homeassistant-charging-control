@@ -21,12 +21,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the select platform."""
-    config = config_entry.data
-    
+    # Get merged config (data + options) from hass.data
+    config = hass.data[DOMAIN][config_entry.entry_id]
+
     selects = [
         MaxChargingCurrentSelect(hass, config, config_entry.entry_id),
     ]
-    
+
     async_add_entities(selects, True)
 
 

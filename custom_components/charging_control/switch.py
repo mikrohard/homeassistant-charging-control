@@ -21,12 +21,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the switch platform."""
-    config = config_entry.data
-    
+    # Get merged config (data + options) from hass.data
+    config = hass.data[DOMAIN][config_entry.entry_id]
+
     switches = [
         ChargingEnabledSwitch(hass, config, config_entry.entry_id),
     ]
-    
+
     async_add_entities(switches, True)
 
 

@@ -55,14 +55,18 @@ For three-phase installations and charger monitoring:
 - **Voltage L2/L3 Entity**: Sensors for voltage on phases L2 and L3
 - **Charger Current L1/L2/L3 Entity**: Sensors showing EV charger current consumption per phase
 
-### Step 4: Charger Control (Optional)
+### Step 4: Resume Charging Control (Optional)
+
+- **Estimated 15min Power with Min Charging**: A sensor that provides an estimate of what the 15-minute average power would be if charging resumed at minimum speed (6A). When configured, this entity is used to determine when charging can safely resume after being stopped due to a power limit. Charging will resume when this estimated value drops below the maximum import power. If not configured, the integration falls back to resuming when the actual 15-minute average drops below 90% of the maximum import power.
+
+### Step 5: Charger Control (Optional)
 
 To enable automatic charger control:
 
 - **Charger Switch Entity**: Switch entity to turn the charger on/off
 - **Charger Current Select Entity**: Select/input_select entity to set charging current (must have options like "6", "10", "16", "25", "32")
 
-### Step 5: Other Settings
+### Step 6: Other Settings
 
 - **Update Interval**: How often to check and update charging parameters (5-60 seconds, default: 10)
 
@@ -112,6 +116,7 @@ data:
 - **Minimum Current**: Never sets charging below 6A (if insufficient power, charging stops instead)
 - **Maximum Current Cap**: User-configurable maximum limit (default 32A)
 - **15-Minute Average Protection**: Prevents grid connection overload penalties
+- **Hysteresis Control**: When charging stops due to power limit, it only resumes when safe. If the "Estimated 15min Power with Min Charging" entity is configured, charging resumes when that estimate drops below the max import power. Otherwise, charging resumes when the 15-minute average drops below 90% of the maximum.
 - **Phase Balancing**: Assumes balanced three-phase charging for calculations
 - **Fail-Safe**: If any calculation fails, charging is disabled for safety
 

@@ -100,6 +100,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("charger_current_select_entity"): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["input_select", "select"])
                 ),
+                vol.Optional("estimated_power_with_charging_entity"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
             }
         )
 
@@ -132,8 +135,8 @@ class OptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        # Get current values
-        current_data = self.config_entry.data
+        # Get current values (merge data and options, options take precedence)
+        current_data = {**self.config_entry.data, **self.config_entry.options}
 
         data_schema = vol.Schema(
             {
@@ -222,6 +225,12 @@ class OptionsFlow(config_entries.OptionsFlow):
                     default=current_data.get("charger_current_select_entity"),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["input_select", "select"])
+                ),
+                vol.Optional(
+                    "estimated_power_with_charging_entity",
+                    default=current_data.get("estimated_power_with_charging_entity"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
                 ),
             }
         )

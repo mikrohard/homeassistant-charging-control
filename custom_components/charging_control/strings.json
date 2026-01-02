@@ -18,7 +18,8 @@
           "charger_current_l3_entity": "Charger L3 Current Entity (Optional)",
           "update_interval": "Update Interval (seconds)",
           "charger_switch_entity": "Charger Switch Entity (Optional)",
-          "charger_current_select_entity": "Charger Current Select Entity (Optional)"
+          "charger_current_select_entity": "Charger Current Select Entity (Optional)",
+          "estimated_power_with_charging_entity": "Estimated 15min Power with Min Charging (Optional)"
         }
       }
     },
@@ -48,7 +49,8 @@
           "charger_current_l3_entity": "Charger L3 Current Entity (Optional)",
           "update_interval": "Update Interval (seconds)",
           "charger_switch_entity": "Charger Switch Entity (Optional)",
-          "charger_current_select_entity": "Charger Current Select Entity (Optional)"
+          "charger_current_select_entity": "Charger Current Select Entity (Optional)",
+          "estimated_power_with_charging_entity": "Estimated 15min Power with Min Charging (Optional)"
         }
       }
     }

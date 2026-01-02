@@ -18,9 +18,13 @@ PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Charging Control from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+    # Merge data and options (options override data)
+    hass.data[DOMAIN][entry.entry_id] = {**entry.data, **entry.options}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Add update listener to reload when options change
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     # Register services
     async def handle_update_charger(call):
@@ -68,3 +72,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update - reload the integration."""
+    await hass.config_entries.async_reload(entry.entry_id)

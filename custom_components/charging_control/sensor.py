@@ -27,13 +27,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
-    config = config_entry.data
-    
+    # Get merged config (data + options) from hass.data
+    config = hass.data[DOMAIN][config_entry.entry_id]
+
     sensors = [
         ChargingAllowedSensor(hass, config, config_entry.entry_id),
         MaxChargingCurrentSensor(hass, config, config_entry.entry_id),
     ]
-    
+
     async_add_entities(sensors, True)
 
 
@@ -97,6 +98,10 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
         # Charger control entities (optional)
         self.charger_switch_entity = config.get("charger_switch_entity")
         self.charger_current_select_entity = config.get("charger_current_select_entity")
+
+        # Estimated power with charging entity (optional)
+        # This entity provides an estimate of the 15-min average power if charging resumes at minimum speed
+        self.estimated_power_with_charging_entity = config.get("estimated_power_with_charging_entity")
         
         # Power tracking
         self.power_window_30s = PowerWindow(30)
@@ -238,6 +243,28 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
         except Exception as e:
             _LOGGER.error(f"Error controlling charger current: {e}")
     
+    def _can_resume_charging(self, max_import: float) -> bool:
+        """Check if charging can resume after being stopped due to power limit.
+
+        If estimated_power_with_charging_entity is configured, resume when that
+        estimated value drops below max_import.
+        Otherwise, fall back to resuming when avg_import_15min < 90% of max_import.
+        """
+        if self.estimated_power_with_charging_entity:
+            state = self.hass.states.get(self.estimated_power_with_charging_entity)
+            if state and state.state not in ("unknown", "unavailable"):
+                try:
+                    estimated_power = float(state.state)
+                    return estimated_power < max_import
+                except (ValueError, TypeError):
+                    _LOGGER.warning(
+                        f"Could not convert estimated power state to float: {state.state}, "
+                        "falling back to 90% threshold"
+                    )
+        # Fall back to 90% of max import threshold
+        avg_import_15min = self._get_state_value(self.avg_import_entity)
+        return avg_import_15min < max_import * 0.9
+
     def _calculate_charging_allowed(self) -> bool:
         """Calculate if charging should be allowed (without checking the switch)."""
         # Get the 15-minute average import power from entity
@@ -255,16 +282,15 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
             return False
 
         # If charging was previously stopped due to power limit,
-        # only allow restart when average drops below 90% of max
+        # check if we can resume
         if self._charging_stopped_due_to_power_limit:
-            threshold = max_import * 0.9
-            if avg_import_15min < threshold:
-                # Clear the flag, we're below the restart threshold
+            if self._can_resume_charging(max_import):
+                # Clear the flag, we can resume charging
                 self._charging_stopped_due_to_power_limit = False
             else:
-                # Still above restart threshold, keep charging disabled
+                # Still can't resume, keep charging disabled
                 return False
-            
+
         # Charging is allowed if 15-min average is below the maximum
         return True
     
@@ -491,14 +517,20 @@ class ChargingAllowedSensor(ChargingControlSensorBase):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         max_import = self._get_state_value(self.max_import_entity)
-        return {
+        attrs = {
             "charging_control_enabled": self._is_charging_enabled(),
             "avg_import_power_15min": self._get_state_value(self.avg_import_entity),
             "max_import_power": max_import,
-            "restart_threshold": max_import * 0.9 if max_import > 0 else 0,
             "current_power": self._calculate_current_power(),
             "charging_stopped_due_to_power_limit": self._charging_stopped_due_to_power_limit,
+            "estimated_power_with_charging_configured": bool(self.estimated_power_with_charging_entity),
         }
+        # Show the resume threshold based on configuration
+        if self.estimated_power_with_charging_entity:
+            attrs["estimated_power_with_charging"] = self._get_state_value(self.estimated_power_with_charging_entity)
+        else:
+            attrs["restart_threshold"] = max_import * 0.9 if max_import > 0 else 0
+        return attrs
 
 
 class MaxChargingCurrentSensor(ChargingControlSensorBase):
@@ -586,18 +618,24 @@ class MaxChargingCurrentSensor(ChargingControlSensorBase):
         charger_power = self._calculate_charger_power()
         max_import = self._get_state_value(self.max_import_entity)
 
-        return {
+        attrs = {
             "charging_control_enabled": self._is_charging_enabled(),
             "max_current_cap": self._get_max_current_cap(),
             "avg_power_30s": avg_power_30s,
             "current_charger_power": charger_power,
             "max_import_power": max_import,
-            "restart_threshold": max_import * 0.9 if max_import > 0 else 0,
             "base_power_without_charging": (avg_power_30s - charger_power) if avg_power_30s else None,
             "charger_switch_configured": bool(self.charger_switch_entity),
             "charger_current_select_configured": bool(self.charger_current_select_entity),
             "charging_stopped_due_to_power_limit": self._charging_stopped_due_to_power_limit,
+            "estimated_power_with_charging_configured": bool(self.estimated_power_with_charging_entity),
         }
+        # Show the resume threshold based on configuration
+        if self.estimated_power_with_charging_entity:
+            attrs["estimated_power_with_charging"] = self._get_state_value(self.estimated_power_with_charging_entity)
+        else:
+            attrs["restart_threshold"] = max_import * 0.9 if max_import > 0 else 0
+        return attrs
 
 
 async def update_charger_from_calculations(hass: HomeAssistant, entry_id: str) -> None:
