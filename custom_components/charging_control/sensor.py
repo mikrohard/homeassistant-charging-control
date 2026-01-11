@@ -277,9 +277,12 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
             return False
 
         # Check if we should stop charging due to power limit
+        # Only disable if charger is actually drawing power (not just connected and waiting)
         if avg_import_15min >= max_import:
-            self._charging_stopped_due_to_power_limit = True
-            return False
+            charger_power = self._calculate_charger_power()
+            if charger_power > 0:
+                self._charging_stopped_due_to_power_limit = True
+                return False
 
         # If charging was previously stopped due to power limit,
         # check if we can resume
