@@ -103,19 +103,19 @@ data:
 ## How It Works
 
 1. **Power Monitoring**: The integration continuously monitors your household power consumption across all phases
-2. **Available Power Calculation**: Calculates available power by subtracting current usage from your maximum import limit
+2. **Available Power Calculation**: Estimates the household base load by subtracting the 30-second average charger power from the 30-second average total power (both sampled at the same instants, so a change in charging current does not skew the estimate), then subtracts that base load from your maximum import limit
 3. **Safety Checks**:
    - Ensures 15-minute average power stays below maximum (grid protection)
    - Checks if there's enough power for minimum charging (6A)
    - Monitors phase currents to prevent overload
-4. **Dynamic Adjustment**: Adjusts charging current in real-time based on available capacity
+4. **Dynamic Adjustment**: Adjusts charging current in real-time based on available capacity. After each change the controller waits 60 seconds for the averages to settle before changing again, and only raises the current when the target is at least 2A above the current setpoint (decreases are applied immediately). This prevents the setpoint from oscillating around the available power.
 5. **Automatic Control**: If configured, automatically controls your EV charger switch and current settings
 
 ## Safety Features
 
 - **Minimum Current**: Never sets charging below 6A (if insufficient power, charging stops instead)
 - **Maximum Current Cap**: User-configurable maximum limit (default 32A)
-- **15-Minute Average Protection**: Prevents grid connection overload penalties
+- **15-Minute Average Protection**: Prevents grid connection overload penalties. The 15-minute average must stay above the limit for at least one update interval before charging is stopped, so a single transient sample (for example at a quarter-hour reset of the averaging sensor) does not interrupt the session.
 - **Hysteresis Control**: When charging stops due to power limit, it only resumes when safe. If the "Estimated 15min Power with Min Charging" entity is configured, charging resumes when that estimate drops below the max import power. Otherwise, charging resumes when the 15-minute average drops below 90% of the maximum.
 - **Phase Balancing**: Assumes balanced three-phase charging for calculations
 - **Fail-Safe**: If any calculation fails, charging is disabled for safety
