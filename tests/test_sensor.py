@@ -200,6 +200,22 @@ async def test_increase_within_deadband_is_ignored(
     assert set(plant.setpoints) == {13}, plant.setpoints
 
 
+async def test_final_step_to_cap_ignores_deadband(
+    hass: HomeAssistant, freezer, plant_factory
+):
+    """A setpoint 1 A below the cap still steps up to the cap.
+
+    Reproduces the field failure where the charger sat at 15 A under a 16 A cap
+    with ample headroom, because the 1 A step was swallowed by the deadband.
+    """
+    # Available 11100 - 100 = 11000 W -> 15 A raw target, so a 15 A cap is binding
+    plant = await plant_factory(base_w=100.0, setpoint=14)
+    await set_current_cap(hass, 15)
+    await plant.tick(freezer, 12)
+    assert plant.setpoints[-1] == 15, plant.setpoints
+    assert set(plant.setpoints[-8:]) == {15}, plant.setpoints
+
+
 async def test_decrease_of_one_amp_is_applied(
     hass: HomeAssistant, freezer, plant_factory
 ):

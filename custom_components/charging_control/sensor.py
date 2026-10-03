@@ -355,6 +355,11 @@ class ChargingControlSensorBase(SensorEntity, RestoreEntity):
 
         if target < current:
             return True
+        # The deadband guards against chasing measurement lag near the available
+        # power limit. A target pinned at the user cap is not driven by that
+        # measurement, so the final step up to the cap is always allowed.
+        if target >= self._get_max_current_cap():
+            return True
         if target - current < INCREASE_DEADBAND_AMPS:
             _LOGGER.debug(
                 f"Skipping charger current increase from {current}A to {target}A: "

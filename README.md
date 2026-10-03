@@ -108,7 +108,7 @@ data:
    - Ensures 15-minute average power stays below maximum (grid protection)
    - Checks if there's enough power for minimum charging (6A)
    - Monitors phase currents to prevent overload
-4. **Dynamic Adjustment**: Adjusts charging current in real-time based on available capacity. After each change the controller waits 60 seconds for the averages to settle before changing again, and only raises the current when the target is at least 2A above the current setpoint (decreases are applied immediately). This prevents the setpoint from oscillating around the available power.
+4. **Dynamic Adjustment**: Adjusts charging current in real-time based on available capacity. After each change the controller waits 60 seconds for the averages to settle before changing again, and only raises the current when the target is at least 2A above the current setpoint (decreases are applied immediately; the final step up to the configured maximum current cap is always allowed). This prevents the setpoint from oscillating around the available power.
 5. **Automatic Control**: If configured, automatically controls your EV charger switch and current settings
 
 ## Safety Features
